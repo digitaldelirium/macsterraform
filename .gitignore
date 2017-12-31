@@ -7,3 +7,6 @@
 
 # Variables files with secrets
 *.tfvars
+
+# Ignore Plan files
+*.plan
