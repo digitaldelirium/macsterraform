@@ -20,25 +20,19 @@ resource "azurerm_key_vault" "macs_vault" {
 
   access_policy {
     tenant_id      = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
-    object_id      = "ab520a90-476b-4c52-b11f-e5a2fe44226e"
-    application_id = "6c36d239-f3d9-4554-b100-f6c0859c214d"
+    object_id      = "6e1ed4eb-026a-424c-8c03-b87418b69c6e"
+    application_id = "44c4e2a1-4b32-4d7b-b063-ab00907ab449"
 
     key_permissions = [
       "backup",
       "create",
-      "decrypt",
       "delete",
-      "encrypt",
       "get",
       "import",
       "list",
-      "purge",
       "recover",
       "restore",
-      "sign",
-      "unwrapKey",
       "update",
-      "verify",
     ]
 
     secret_permissions = [
@@ -46,7 +40,6 @@ resource "azurerm_key_vault" "macs_vault" {
       "backup",
       "delete",
       "list",
-      "purge",
       "recover",
       "restore",
       "set",
@@ -75,19 +68,13 @@ resource "azurerm_key_vault" "macs_vault" {
     key_permissions = [
       "backup",
       "create",
-      "decrypt",
       "delete",
-      "encrypt",
       "get",
       "import",
       "list",
-      "purge",
       "recover",
       "restore",
-      "sign",
-      "unwrapKey",
       "update",
-      "verify",
     ]
 
     secret_permissions = [
@@ -95,7 +82,6 @@ resource "azurerm_key_vault" "macs_vault" {
       "backup",
       "delete",
       "list",
-      "purge",
       "recover",
       "restore",
       "set",
@@ -118,50 +104,51 @@ resource "azurerm_key_vault" "macs_vault" {
   }
 
   enabled_for_disk_encryption = true
+  enabled_for_deployment = true
 }
 
 # Allow for disk encryption
-#resource "azurerm_key_vault_certificate" "disk_encryption" {
-#  name      = "disk-encryption"
-#  vault_uri = "${azurerm_key_vault.macs_vault.vault_uri}"
+/*resource "azurerm_key_vault_certificate" "disk_encryption" {
+  name      = "disk-encryption"
+  vault_uri = "${azurerm_key_vault.macs_vault.vault_uri}"
 
-#  certificate_policy {
-#    issuer_parameters {
-#      name = "Self"
-#    }
+  certificate_policy {
+    issuer_parameters {
+      name = "Self"
+    }
 
-#    key_properties {
-#      exportable = true
-#      key_size   = "2048"
-#      key_type   = "RSA"
-#      reuse_key  = true
-#    }
+    key_properties {
+      exportable = true
+      key_size   = "2048"
+      key_type   = "RSA"
+      reuse_key  = true
+    }
   
-#    lifetime_action {
-#      action {
-#        action_type = "AutoRenew"
-#      }
+    lifetime_action {
+      action {
+        action_type = "AutoRenew"
+      }
 
-#      trigger {
-#        days_before_expiry = 30
-#      }
-#    }
+      trigger {
+        days_before_expiry = 30
+      }
+    }
 
-#    secret_properties {
-#      content_type = "application/x-pkcs12"
-#    }
+    secret_properties {
+      content_type = "application/x-pkcs12"
+    }
   
 
-#    x509_certificate_properties {
-#      key_usage = [
-#        "dataEncipherment",
-#      ]
+    x509_certificate_properties {
+      key_usage = [
+        "dataEncipherment",
+      ]
 
-#      subject            = "CN=MacsEncryption"
-#      validity_in_months = 12
-#    }
-#  }
-#}
+      subject            = "CN=MacsEncryption"
+      validity_in_months = 12
+    }
+  }
+}*/
 
 # Generate Root Password for MSSQL
 resource "random_string" "mysql_root_password" {
@@ -171,7 +158,7 @@ resource "random_string" "mysql_root_password" {
 
 # Save SQL Password
 resource "azurerm_key_vault_secret" "sql_root" {
-  name      = "SQLRoot"
+  name      = "MySQLRootPW"
   value     = "${random_string.mysql_root_password.result}"
   vault_uri = "${azurerm_key_vault.macs_vault.vault_uri}"
   content_type = "string"
@@ -186,12 +173,27 @@ resource "random_string" "macs_datauser_password" {
 
 # Save SQL User Password
 resource "azurerm_key_vault_secret" "sql_user" {
-  name      = "MySqlUser"
+  name      = "MySqlUserPW"
   value     = "${random_string.macs_datauser_password.result}"
   vault_uri = "${azurerm_key_vault.macs_vault.vault_uri}"
   content_type = "string"
   depends_on = ["random_string.macs_datauser_password"]
 }
+
+resource "null_resource" "create_ssh_key" {
+    provisioner "local-exec" {
+      command = "ssh-keygen -t rsa -b 4096 -C 'MacsCampingAreaVM' -q -N '' -f macscampingarea"
+      when = "create"
+    }
+}
+
+/*resource "azurerm_key_vault_secret" "macs_ssh_privatekey" {
+  name = "MacsSSHPrivateKey"
+  value = "${file("${path.cwd}/macscampingarea")}"
+  vault_uri = "${azurerm_key_vault.macs_vault.vault_uri}"
+  content_type = "private-key"
+  depends_on = ["null_resource.create_ssh_key"]
+}*/
 
 # Recall State Server
 data "terraform_remote_state" "state_server" {
