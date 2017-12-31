@@ -24,6 +24,7 @@ resource "azurerm_storage_container" "macs_state" {
 
 data "azurerm_resource_group" "macs_resources" {
     name = "${azurerm_resource_group.macs_resources.name}"
+    depends_on = ["azurerm_resource_group.macs_resources"]
 }
 
 data "azurerm_subscription" "current" {
