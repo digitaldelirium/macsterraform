@@ -58,6 +58,7 @@ resource "azurerm_key_vault" "macs_vault" {
       "manageissuers",
       "setissuers",
       "update",
+      "recover"
     ]
   }
 
@@ -100,6 +101,51 @@ resource "azurerm_key_vault" "macs_vault" {
       "manageissuers",
       "setissuers",
       "update",
+      "recover"
+    ]
+  }
+
+  access_policy {
+    tenant_id      = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
+    object_id      = "9ba6a68e-40fb-4311-b5f2-41920b92e188"
+    application_id = "36011f72-2743-4b0b-a97f-99c37235684e"
+
+    key_permissions = [
+      "backup",
+      "create",
+      "delete",
+      "get",
+      "import",
+      "list",
+      "recover",
+      "restore",
+      "update",
+    ]
+
+    secret_permissions = [
+      "get",
+      "backup",
+      "delete",
+      "list",
+      "recover",
+      "restore",
+      "set",
+    ]
+
+    certificate_permissions = [
+      "create",
+      "delete",
+      "deleteissuers",
+      "get",
+      "getissuers",
+      "import",
+      "list",
+      "listissuers",
+      "managecontacts",
+      "manageissuers",
+      "setissuers",
+      "update",
+      "recover"
     ]
   }
 
@@ -182,7 +228,8 @@ resource "azurerm_key_vault_secret" "sql_user" {
 
 resource "null_resource" "create_ssh_key" {
     provisioner "local-exec" {
-      command = "ssh-keygen -t rsa -b 4096 -C 'MacsCampingAreaVM' -q -N '' -f macscampingarea"
+      interpreter = ["/bin/bash", "-c"]
+      command = "ssh-keygen -t rsa -b 4096 -f macscampingarea -C 'MacsCampingAreaVM' -q -N ''"
       when = "create"
     }
 }
