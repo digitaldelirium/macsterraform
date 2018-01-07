@@ -10,3 +10,9 @@
 
 # Ignore Plan files
 *.plan
+
+# Don't check-in certs
+*.pem
+*.pfx
+*.crt
+*.key
