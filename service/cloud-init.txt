@@ -1,40 +1,21 @@
 #cloud-config
+datasource:
+  agent-command:
+  Azure:
+    agent-command: [service, walinuxagent, start]
 groups:
   - docker: macs
-
-apt:
-  primary:
-    - arches: [default]
-      uri: https://packages.microsoft.com/config/ubuntu/16.04/prod.list
-
 package_update: true
-
 package_upgrade: true
-
 packages:
+  - curl
   - apt-utils
   - software-properties-common
-  - powershell
-
+  - apt-transport-https
 package_reboot_if_required: true
-
-write_files:
-  - owner: root:root
-    content: |
-      #! /bin/bash
-      docker volume create portainer_data
-      docker run -d -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data --name=portainer --restart=always portainer/portainer
-    path: /root/setup_portainer.sh
-    permissions: '0700'
-runcmd:
-  - [ sh, /root/setup_portainer.sh]
-
 byobu_by_default: enable
-
 fqdn: macsvm.macscampingarea.com
-
 timezone: America/New_York
-
 ca-certs:
   remove-defaults: false
   trusted:

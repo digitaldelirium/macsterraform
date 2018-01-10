@@ -3,6 +3,6 @@ output "resource_group" {
 }
 
 output "primary_access_key" {
-   value = "${azurerm_storage_account.macsstatestorage.primary_access_key}"
-   sensitive = true
+  value     = "${azurerm_storage_account.macsstatestorage.primary_access_key}"
+  sensitive = true
 }

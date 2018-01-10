@@ -44,7 +44,7 @@ resource "azurerm_storage_container" "macs_state" {
 terraform {
   backend "azurerm" {
     storage_account_name = "macsstatestorage"
-    container_name = "tfstate"
-    key = "prod.state.tfstate"
+    container_name       = "tfstate"
+    key                  = "prod.state.tfstate"
   }
 }
