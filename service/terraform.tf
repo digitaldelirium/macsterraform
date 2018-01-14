@@ -15,6 +15,14 @@ data "azurerm_resource_group" "macsvaultgroup" {
 
 data "azurerm_subscription" "current" {}
 
+data "template_file" "decrypt_key" {
+  template = "${file("${path.cwd}/key-decrypt.tpl")}"
+
+  vars {
+    server_pk_password = "${var.server_pk_password}"
+  }
+}
+
 # Create virtual network
 resource "azurerm_virtual_network" "macsterraformnetwork" {
   name                = "macsVnet"
@@ -225,14 +233,13 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     type = "SystemAssigned"
   }
 
+  # Install Docker and add user to docker group
   provisioner "remote-exec" {
     inline = [
-      "sudo mkdir /var/docker",
-      "sudo mkdir /etc/docker",
-      "sudo groupadd docker",
-      "sudo usermod -a -G docker macs",
-      "sudo chown macs:docker /var/docker",
-      "sudo chown macs:docker /etc/docker",
+      "curl -fsSL get.docker.com -o get-docker.sh",
+      "sudo sh get-docker.sh",
+      "sudo usermod -aG docker macs",
+      "mkdir -p /home/macs/.docker",
     ]
 
     connection {
@@ -244,23 +251,10 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     }
   }
 
-  # Copies the myapp.conf file to /etc/myapp.conf
-  /*provisioner "file" {
-    source      = "${path.cwd}/macsvm-cert.pem"
-    destination = "/var/docker/cert.pem"
-
-    connection {
-      type        = "ssh"
-      agent       = true
-      host        = "${data.azurerm_public_ip.selected.ip_address}"
-      user        = "macs"
-      private_key = "${file("${path.cwd}/macsvm")}"
-    }
-  }
-
+  # Copies the server certificate
   provisioner "file" {
-    source      = "${path.cwd}/macsvm-key.pem"
-    destination = "/var/docker/key.pem"
+    source      = "${path.cwd}/macsvm-cert.pem"
+    destination = "/home/macs/.docker/cert.pem"
 
     connection {
       type        = "ssh"
@@ -271,9 +265,38 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     }
   }
 
+  # Copies the server private key
+  provisioner "file" {
+    source      = "${path.cwd}/key.pem"
+    destination = "/home/macs/.docker/key.pem"
+
+    connection {
+      type        = "ssh"
+      agent       = true
+      host        = "${data.azurerm_public_ip.selected.ip_address}"
+      user        = "macs"
+      private_key = "${file("${path.cwd}/macsvm")}"
+    }
+  }
+
+  # Copies the CA Cert
   provisioner "file" {
     source      = "${path.cwd}/intermediate.cert.pem"
-    destination = "/var/docker/cacert.pem"
+    destination = "/home/macs/.docker/cacert.pem"
+
+    connection {
+      type        = "ssh"
+      agent       = true
+      host        = "${data.azurerm_public_ip.selected.ip_address}"
+      user        = "macs"
+      private_key = "${file("${path.cwd}/macsvm")}"
+    }
+  }
+
+  # Copies the service override
+  provisioner "file" {
+    source      = "${path.cwd}/docker.conf"
+    destination = "/home/macs/docker.conf"
 
     connection {
       type        = "ssh"
@@ -289,14 +312,14 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     content = <<-EOF
       {
         "tlsverify": true,
-        "tlscert": "/var/docker/cert.pem",
-        "tlskey": "/var/docker/key.pem",
-        "tlscacert": "/var/docker/cacert.pem",
+        "tlscert": "/home/macs/.docker/cert.pem",
+        "tlskey": "/home/macs/.docker/key.pem",
+        "tlscacert": "/home/macs/.docker/cacert.pem",
         "hosts": ["tcp://0.0.0.0:2376"]
       }
       EOF
 
-    destination = "/etc/docker/daemon.json"
+    destination = "/home/macs/daemon.json"
 
     connection {
       type        = "ssh"
@@ -309,8 +332,20 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
 
   provisioner "remote-exec" {
     inline = [
-      "curl -fsSL https://get.docker.com -o get-docker.sh",
-      "sudo sh get-docker.sh",
+      "sudo systemctl stop docker",
+      "[ ! -d /etc/systemd/system/docker.service.d ] && sudo mkdir -p /etc/systemd/system/docker.service.d",
+      "byobu-enable",
+      "sudo mv /home/macs/docker.conf /etc/systemd/system/docker.service.d/docker.conf",
+      "sudo mv /home/macs/daemon.json /etc/docker/daemon.json",
+      "sudo apt-get upgrade -y",
+      "sudo systemctl enable docker",
+      "sudo ufw allow ssh",
+      "sudo ufw allow 2376/tcp",
+      "sudo ufw allow http",
+      "sudo ufw allow https",
+      "sudo ufw allow mysql",
+      "sudo ufw enable --force",
+      "sudo systemctl start docker",
     ]
 
     connection {
@@ -320,7 +355,7 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
       user        = "macs"
       private_key = "${file("${path.cwd}/macsvm")}"
     }
-  }*/
+  }
 }
 
 resource "azurerm_virtual_machine_extension" "msi" {
@@ -337,31 +372,6 @@ resource "azurerm_virtual_machine_extension" "msi" {
         "port": 50342
     }
 SETTINGS
-}
-
-resource "azurerm_virtual_machine_extension" "macsDockerExt" {
-  name                 = "macsDocker"
-  location             = "eastus"
-  resource_group_name  = "${data.terraform_remote_state.state.resource_group}"
-  virtual_machine_name = "${azurerm_virtual_machine.macsterraformvm.name}"
-  publisher            = "Microsoft.Azure.Extensions"
-  type                 = "DockerExtension"
-  type_handler_version = "1.1"
-  depends_on           = ["azurerm_virtual_machine_extension.msi", "azurerm_virtual_machine_extension.myNetworkWatcher"]
-
-  settings = <<SETTINGS
-  {
-      "dockerPort": 2376
-  }
-  SETTINGS
-
-  protected_settings = <<SETTINGS
-  {
-      "dockerCACert": "${base64encode(file("intermediate.cert.pem"))}",
-      "dockerServerCert": "${base64encode(file("macsvm-cert.pem"))}",
-      "dockerServerKey": "${base64encode(file("macsvm-key.pem"))}"
-  }
-  SETTINGS
 }
 
 resource "azurerm_virtual_machine_extension" "myNetworkWatcher" {
@@ -429,8 +439,8 @@ resource "azurerm_key_vault" "macsvault" {
   }
 
   access_policy {
-    tenant_id      = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
-    object_id      = "${lookup(azurerm_virtual_machine.macsterraformvm.identity[0], "principal_id")}"
+    tenant_id = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
+    object_id = "${lookup(azurerm_virtual_machine.macsterraformvm.identity[0], "principal_id")}"
 
     key_permissions = [
       "get",
@@ -512,6 +522,49 @@ resource "azurerm_key_vault" "macsvault" {
     ]
   }
 
+  access_policy {
+    tenant_id      = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
+    object_id      = "1714df59-7463-4437-9478-b126a07a1187"
+    application_id = "44c4e2a1-4b32-4d7b-b063-ab00907ab449"
+
+    key_permissions = [
+      "get",
+      "list",
+      "update",
+      "create",
+      "import",
+      "delete",
+      "recover",
+      "backup",
+      "restore",
+    ]
+
+    secret_permissions = [
+      "get",
+      "list",
+      "set",
+      "delete",
+      "recover",
+      "backup",
+      "restore",
+    ]
+
+    certificate_permissions = [
+      "get",
+      "list",
+      "update",
+      "create",
+      "import",
+      "delete",
+      "managecontacts",
+      "manageissuers",
+      "getissuers",
+      "listissuers",
+      "setissuers",
+      "deleteissuers",
+    ]
+  }
+
   enabled_for_disk_encryption     = true
   enabled_for_template_deployment = true
   enabled_for_deployment          = true
@@ -519,51 +572,6 @@ resource "azurerm_key_vault" "macsvault" {
   lifecycle {
     prevent_destroy = true
   }
-}
-
-resource "azurerm_key_vault_secret" "pfx_password" {
-  name      = "MacsVMPFXPassword"
-  value     = "${var.pfx_password}"
-  vault_uri = "${azurerm_key_vault.macsvault.vault_uri}"
-}
-
-resource "azurerm_key_vault_certificate" "macs_certificate" {
-  name      = "MacsVMPFX"
-  vault_uri = "${azurerm_key_vault.macsvault.vault_uri}"
-
-  certificate {
-    contents = "${base64encode(file("${path.cwd}/macsvm.pfx"))}"
-    password = "${var.pfx_password}"
-  }
-
-  certificate_policy {
-    issuer_parameters {
-      name = "Self"
-    }
-
-    key_properties {
-      exportable = true
-      key_size   = 4096
-      key_type   = "RSA"
-      reuse_key  = true
-    }
-
-    secret_properties {
-      content_type = "application/x-pkcs12"
-    }
-  }
-}
-
-resource "azurerm_key_vault_secret" "macs_ssh_private_key" {
-  name      = "MacsSSHPrivateKey"
-  value     = "${file("${path.cwd}/macsvm")}"
-  vault_uri = "${azurerm_key_vault.macsvault.vault_uri}"
-}
-
-resource "azurerm_key_vault_secret" "macs_ssh_public_key" {
-  name      = "MacsSSHPublicKey"
-  value     = "${file("${path.cwd}/macsvm.pub")}"
-  vault_uri = "${azurerm_key_vault.macsvault.vault_uri}"
 }
 
 terraform {
