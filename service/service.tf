@@ -15,14 +15,6 @@ data "azurerm_resource_group" "macsvaultgroup" {
 
 data "azurerm_subscription" "current" {}
 
-data "template_file" "decrypt_key" {
-  template = "${file("${path.cwd}/key-decrypt.tpl")}"
-
-  vars {
-    server_pk_password = "${var.server_pk_password}"
-  }
-}
-
 # Create virtual network
 resource "azurerm_virtual_network" "macsterraformnetwork" {
   name                = "macsVnet"
