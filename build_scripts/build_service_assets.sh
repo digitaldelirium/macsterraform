@@ -1,9 +1,10 @@
 #! /bin/bash
-
 export CLIENT_SECRET=$1
 export PFX_PASSWORD=$2
 export ACCESS_KEY=$3
 export SERVER_PK_PASSWORD=$4
+
+cd ../service
 
 # Create Key.Pem
 echo $5 > key.pem
