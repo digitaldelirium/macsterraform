@@ -245,7 +245,7 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
 
   # Copies the server certificate
   provisioner "file" {
-    source      = "${path.cwd}/macsvm-cert.pem"
+    source      = "${path.cwd}/cert.pem"
     destination = "/home/macs/.docker/cert.pem"
 
     connection {
@@ -273,7 +273,7 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
 
   # Copies the CA Cert
   provisioner "file" {
-    source      = "${path.cwd}/intermediate.cert.pem"
+    source      = "${path.cwd}/cacert.pem"
     destination = "/home/macs/.docker/cacert.pem"
 
     connection {
