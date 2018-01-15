@@ -45,7 +45,7 @@ terraform {
   backend "azurerm" {
     storage_account_name = "macsstatestorage"
     container_name       = "tfstate"
-    access_key           = "${var.access_key}"
+    access_key           = {}
     key                  = "prod.state.tfstate"
   }
 }
