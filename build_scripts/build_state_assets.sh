@@ -1,5 +1,5 @@
 #! /bin/bash
-export CLIENT_SECRET=`az keyvault secret show --name client-secret --vault-name macscampvault -o tsv`
+CLIENT_SECRET=$1
 
 terraform init
 terraform plan -out state.plan
