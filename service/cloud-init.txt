@@ -1,8 +1,4 @@
 #cloud-config
-datasource:
-  agent-command:
-  Azure:
-    agent-command: [service, walinuxagent, start]
 groups:
   - docker: macs
 package_update: true

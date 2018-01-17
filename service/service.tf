@@ -245,8 +245,8 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
 
   # Copies the server certificate
   provisioner "file" {
-    source      = "${path.cwd}/cert.pem"
-    destination = "/home/macs/.docker/cert.pem"
+    source      = "${path.cwd}/server-cert.pem"
+    destination = "/home/macs/.docker/server-cert.pem"
 
     connection {
       type        = "ssh"
@@ -259,7 +259,35 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
 
   # Copies the server private key
   provisioner "file" {
-    source      = "${path.cwd}/key.pem"
+    source      = "${path.cwd}/server-key.pem"
+    destination = "/home/macs/.docker/server-key.pem"
+
+    connection {
+      type        = "ssh"
+      agent       = true
+      host        = "${data.azurerm_public_ip.selected.ip_address}"
+      user        = "macs"
+      private_key = "${file("${path.cwd}/macsvm")}"
+    }
+  }
+
+  # Copies the client certificate
+  provisioner "file" {
+    source      = "${path.cwd}/client-cert.pem"
+    destination = "/home/macs/.docker/cert.pem"
+
+    connection {
+      type        = "ssh"
+      agent       = true
+      host        = "${data.azurerm_public_ip.selected.ip_address}"
+      user        = "macs"
+      private_key = "${file("${path.cwd}/macsvm")}"
+    }
+  }
+
+  # Copies the client private key
+  provisioner "file" {
+    source      = "${path.cwd}/client-key.pem"
     destination = "/home/macs/.docker/key.pem"
 
     connection {
@@ -273,8 +301,8 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
 
   # Copies the CA Cert
   provisioner "file" {
-    source      = "${path.cwd}/cacert.pem"
-    destination = "/home/macs/.docker/cacert.pem"
+    source      = "${path.cwd}/intermediate.cert.pem"
+    destination = "/home/macs/.docker/ca.pem"
 
     connection {
       type        = "ssh"
@@ -304,9 +332,9 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     content = <<-EOF
       {
         "tlsverify": true,
-        "tlscert": "/home/macs/.docker/cert.pem",
-        "tlskey": "/home/macs/.docker/key.pem",
-        "tlscacert": "/home/macs/.docker/cacert.pem",
+        "tlscert": "/etc/docker/cert.pem",
+        "tlskey": "/etc/docker/key.pem",
+        "tlscacert": "/etc/docker/ca.pem",
         "hosts": ["tcp://0.0.0.0:2376"]
       }
       EOF
@@ -326,18 +354,22 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     inline = [
       "sudo systemctl stop docker",
       "[ ! -d /etc/systemd/system/docker.service.d ] && sudo mkdir -p /etc/systemd/system/docker.service.d",
-      "byobu-enable",
+      "byobu-enable -y",
       "sudo mv /home/macs/docker.conf /etc/systemd/system/docker.service.d/docker.conf",
       "sudo mv /home/macs/daemon.json /etc/docker/daemon.json",
+      "sudo mv /home/macs/.docker/server-cert.pem /etc/docker/cert.pem",
+      "sudo mv /home/macs/.docker/server-key.pem /etc/docker/key.pem",
+      "sudo cp /home/macs/.docker/ca.pem /etc/docker/",
       "sudo apt-get upgrade -y",
       "sudo systemctl enable docker",
+      "sudo systemctl start docker",
       "sudo ufw allow ssh",
       "sudo ufw allow 2376/tcp",
       "sudo ufw allow http",
       "sudo ufw allow https",
       "sudo ufw allow mysql",
-      "sudo ufw enable --force",
-      "sudo systemctl start docker",
+      "yes | sudo ufw enable",
+      "echo export DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_TLS_VERIFY=1 | tee -a .bashrc"
     ]
 
     connection {

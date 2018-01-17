@@ -29,7 +29,7 @@ terraform {
 }
 
 provider "docker" {
-  host      = "${data.terraform_remote_state.service.ip_address}"
+  host      = "tcp://${var.public_ip}:2376"
   cert_path = "/home/ian/.docker"
 
   registry_auth {
@@ -44,11 +44,11 @@ data "docker_registry_image" "mariadb" {
 }
 
 data "docker_registry_image" "portainer" {
-  name = "portainer/portainer"
+  name = "portainer/portainer:latest"
 }
 
 data "docker_registry_image" "phpmyadmin" {
-  name = "phpmyadmin/phpmyadmin"
+  name = "phpmyadmin/phpmyadmin:latest"
 }
 
 data "docker_registry_image" "aspnetcore" {
@@ -76,37 +76,32 @@ resource "docker_volume" "nginx_logs" {
 }
 
 resource "docker_image" "portainer" {
-  name          = "${docker_registry_image.portainer.name}"
-  pull_triggers = ["${docker_registry_image.portainer.sha256_digest}"]
-  depends_on    = ["docker_registry_image.portainer"]
+  name          = "${data.docker_registry_image.portainer.name}"
+  pull_triggers = ["${data.docker_registry_image.portainer.sha256_digest}"]
 }
 
 resource "docker_image" "mariadb" {
-  name          = "${docker_registry_image.mariadb.name}"
-  pull_triggers = ["${docker_registry_image.mariadb.sha256_digest}"]
-  depends_on    = ["docker_registry_image.mariadb"]  
+  name          = "${data.docker_registry_image.mariadb.name}"
+  pull_triggers = ["${data.docker_registry_image.mariadb.sha256_digest}"]
 }
 
 resource "docker_image" "phpmyadmin" {
-  name          = "${docker_registry_image.phpmyadmin.name}"
-  pull_triggers = ["${docker_registry_image.phpmyadmin.sha256_digest}"]
-  depends_on    = ["docker_registry_image.phpmyadmin"]  
+  name          = "${data.docker_registry_image.phpmyadmin.name}"
+  pull_triggers = ["${data.docker_registry_image.phpmyadmin.sha256_digest}"]
 }
 
 resource "docker_image" "aspnetcore" {
-  name          = "${docker_registry_image.aspnetcore.name}"
-  pull_triggers = ["${docker_registry_image.aspnetcore.sha256_digest}"]
-    depends_on    = ["docker_registry_image.aspnet"]
+  name          = "${data.docker_registry_image.aspnetcore.name}"
+  pull_triggers = ["${data.docker_registry_image.aspnetcore.sha256_digest}"]
 }
 
 resource "docker_image" "aspnetcore-build" {
-  name = "${docker_registry_image.aspnetcore-build.name}"
-  pull_triggers = ["${docker_registry_image.aspnetcore-build.sha256_digest}"]
-  depends_on    = ["docker_registry_image.aspnetcore-build"]  
+  name = "${data.docker_registry_image.aspnetcore-build.name}"
+  pull_triggers = ["${data.docker_registry_image.aspnetcore-build.sha256_digest}"]
 }
 
 resource "docker_container" "portainer" {
-  name     = "${docker_image.portainer.name}"
+  name     = "portainer"
   image    = "${docker_image.portainer.latest}"
   restart  = "always"
   must_run = true
@@ -176,13 +171,13 @@ resource "random_string" "macs_password" {
 }
 
 resource "azurerm_key_vault_secret" "mysql_password" {
-  name = "mysql_root_password"
+  name = "mysql-root-password"
   value = "${random_string.mysql_password.result}"
-  vault_uri = "${data.terraform_remote_state.service.macs_vault}"
+  vault_uri = "${var.macs_vault}"
 }
 
 resource "azurerm_key_vault_secret" "macs_password" {
-  name = "macs_password"
+  name = "macs-password"
   value = "${random_string.macs_password.result}"
-  vault_uri = "${data.terraform_remote_state.service.macs_vault}"
+  vault_uri = "${var.macs_vault}"
 }

@@ -1,5 +1,5 @@
 output "public_ip" {
-  value = "${data.azurerm_public_ip.selected.ip_address}"
+  value = "${azurerm_public_ip.macsterraformpublicip.ip_address}"
 }
 
 output "macs_vault" {
