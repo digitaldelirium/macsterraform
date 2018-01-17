@@ -369,7 +369,13 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
       "sudo ufw allow https",
       "sudo ufw allow mysql",
       "yes | sudo ufw enable",
-      "echo export DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_TLS_VERIFY=1 | tee -a .bashrc"
+      "echo export DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_TLS_VERIFY=1 | tee -a .bashrc",
+      "sudo echo db.macscampingarea.com >> /etc/hostname",
+      "sudo echo www.macscampingarea.com >> /etc/hostname",
+      "sudo echo macscampingarea.com >> /etc/hostname",
+      "sudo echo 127.0.1.2 db.macscampingarea.com >> /etc/hosts",
+      "sudo echo 127.0.1.3 www.macscampingarea.com >> /etc/hosts",
+      "sudo echo 127.0.1.4 macscampingarea.com >> /etc/hosts"
     ]
 
     connection {
