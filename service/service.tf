@@ -108,6 +108,18 @@ resource "azurerm_network_security_group" "macsterraformnsg" {
     destination_address_prefix = "*"
   }
 
+  security_rule {
+    name = "MariaDB"
+    priority = 1005
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3306"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
   tags {
     environment = "Mac's Camping Area"
   }
@@ -225,6 +237,10 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     type = "SystemAssigned"
   }
 
+  vault_certificates {
+    certificate_url = "https://macscampvault.vault.azure.net/secrets/macsvmssl/74aee6540fb44c139d7c47c338932603"
+
+  }
   # Install Docker and add user to docker group
   provisioner "remote-exec" {
     inline = [
@@ -370,12 +386,12 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
       "sudo ufw allow mysql",
       "yes | sudo ufw enable",
       "echo export DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_TLS_VERIFY=1 | tee -a .bashrc",
-      "sudo echo db.macscampingarea.com >> /etc/hostname",
-      "sudo echo www.macscampingarea.com >> /etc/hostname",
-      "sudo echo macscampingarea.com >> /etc/hostname",
-      "sudo echo 127.0.1.2 db.macscampingarea.com >> /etc/hosts",
-      "sudo echo 127.0.1.3 www.macscampingarea.com >> /etc/hosts",
-      "sudo echo 127.0.1.4 macscampingarea.com >> /etc/hosts"
+      "sudo hostname db.macscampingarea.com | sudo tee -a /etc/hostname",
+      "sudo hostname  www.macscampingarea.com | sudo tee -a /etc/hostname",
+      "sudo hostname  macscampingarea.com | sudo tee -a /etc/hostname",
+      "sudo echo 127.0.1.2 db.macscampingarea.com | sudo tee -a /etc/hosts",
+      "sudo echo 127.0.1.3 www.macscampingarea.com | sudo tee -a /etc/hosts",
+      "sudo echo 127.0.1.4 macscampingarea.com | sudo tee -a /etc/hosts"
     ]
 
     connection {
