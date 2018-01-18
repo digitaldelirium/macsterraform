@@ -105,6 +105,7 @@ resource "docker_container" "portainer" {
   image    = "${docker_image.portainer.latest}"
   restart  = "always"
   must_run = true
+  hostname = "admin.macscampingarea.com"
 
   volumes {
     volume_name    = "${docker_volume.portainer_data.name}"
@@ -128,6 +129,7 @@ resource "docker_container" "mariadb" {
   restart = "always"
   must_run = "true"
   depends_on = ["random_string.mysql_password"]
+  hostname  = "mariadb.macscampingarea.com"
 
   volumes {
     volume_name = "${docker_volume.sql_data.name}"
@@ -152,7 +154,8 @@ resource "docker_container" "phpmyadmin" {
   restart = "always"
   must_run = "true"
   depends_on = ["docker_container.mariadb"]
-  links = ["mariadb"]
+  links = ["mariadb:db"]
+  hostname = "mysqladmin.macscampingarea.com"
 
   ports {
     internal = 80
@@ -170,6 +173,7 @@ resource "random_string" "macs_password" {
   special = false
 }
 
+/*
 resource "azurerm_key_vault_secret" "mysql_password" {
   name = "mysql-root-password"
   value = "${random_string.mysql_password.result}"
@@ -181,3 +185,4 @@ resource "azurerm_key_vault_secret" "macs_password" {
   value = "${random_string.macs_password.result}"
   vault_uri = "${var.macs_vault}"
 }
+*/
