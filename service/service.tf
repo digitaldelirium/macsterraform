@@ -237,10 +237,13 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
     type = "SystemAssigned"
   }
 
-  vault_certificates {
-    certificate_url = "https://macscampvault.vault.azure.net/secrets/macsvmssl/74aee6540fb44c139d7c47c338932603"
-
+  os_profile_secrets {
+    source_vault_id = "macscampingvault"
+    vault_certificates {
+      certificate_url = "https://macscampvault.vault.azure.net/secrets/macsvmssl/74aee6540fb44c139d7c47c338932603"
+    }
   }
+
   # Install Docker and add user to docker group
   provisioner "remote-exec" {
     inline = [
