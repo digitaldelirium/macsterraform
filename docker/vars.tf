@@ -15,3 +15,11 @@ variable "macs_vault" {
   description = "Macs camping vault URI"
   default = "https://macscampvault.vault.azure.net"
 }
+
+variable "mysql_root_password" {
+  description = "MariaDB/MySQL root password"
+}
+
+variable "macs_password" {
+  description = "Mac's database user password"
+}

@@ -1,3 +1,10 @@
+provider "azurerm" {
+  subscription_id = "9661a81b-1bc6-4836-ad63-41ddb2515f1b"
+  client_id       = "44c4e2a1-4b32-4d7b-b063-ab00907ab449"
+  tenant_id       = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
+  client_secret   = "${var.client_secret}"
+}
+
 data "terraform_remote_state" "state" {
   backend = "azurerm"
 
@@ -616,6 +623,30 @@ resource "azurerm_key_vault" "macsvault" {
       "listissuers",
       "setissuers",
       "deleteissuers",
+    ]
+  }
+
+    access_policy {
+    tenant_id      = "ce30a824-b64b-4702-b3e8-8ff93ba9da38"
+    object_id      = "3e8cb79c-1b08-4fa5-ab0c-d71b7d2eb52c"
+    application_id = "2c28264d-cef0-4b2c-bafb-d96b62cf8a82"
+
+    key_permissions = [
+      "get",
+      "list",
+      "decrypt",
+      "wrapKey",
+      "unwrapKey"
+    ]
+
+    secret_permissions = [
+      "get",
+      "list"
+    ]
+
+    certificate_permissions = [
+      "get",
+      "list"
     ]
   }
 
