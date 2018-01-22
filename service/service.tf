@@ -222,6 +222,11 @@ resource "azurerm_virtual_machine" "macsterraformvm" {
       path     = "/home/macs/.ssh/authorized_keys"
       key_data = "${file("${path.cwd}/macsvm.pub")}"
     }
+
+    ssh_keys {
+      path     = "/home/macs/.ssh/authorized_keys"
+      key_data = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAhQ6hQ3dLa9UVQ/LCSyTJtIi6N8IwUDrMoQ435LXGT8 VisualStudioTeamServices"
+    }
   }
 
   boot_diagnostics {
